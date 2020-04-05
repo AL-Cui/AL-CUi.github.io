@@ -6,15 +6,19 @@
   <meta name="renderer" content="webkit">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <link rel="dns-prefetch" href="http://yoursite.com">
-  <title>Category: Kubernetes | AL-Cui的技术水果摊</title>
+  <title>Istio怎么劫持了流量 | AL-Cui的技术水果摊</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
-<meta property="og:title" content="AL-Cui的技术水果摊">
-<meta property="og:url" content="http://yoursite.com/categories/Kubernetes/index.html">
+  <meta name="description" content="Istio怎么劫持了流量当我们使用istio的时候，有时候会思考Istio到底是怎么劫持了k8s集群的流量呢？首先我们要明白k8s本身的流量是怎么流转的。举个例子，服务A通过服务B部署时注册的Service名称来填写调用地址，这个地址被翻译成一个域名，通过k8s中的私有DNS系统翻译成一个虚拟的ClusterIP，再通过部署在每一个节点上的Kube-proxy服务负载给Service对应的Pod。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Istio怎么劫持了流量">
+<meta property="og:url" content="http://yoursite.com/2020/04/05/Istio怎么劫持了流量/index.html">
 <meta property="og:site_name" content="AL-Cui的技术水果摊">
+<meta property="og:description" content="Istio怎么劫持了流量当我们使用istio的时候，有时候会思考Istio到底是怎么劫持了k8s集群的流量呢？首先我们要明白k8s本身的流量是怎么流转的。举个例子，服务A通过服务B部署时注册的Service名称来填写调用地址，这个地址被翻译成一个域名，通过k8s中的私有DNS系统翻译成一个虚拟的ClusterIP，再通过部署在每一个节点上的Kube-proxy服务负载给Service对应的Pod。">
 <meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2020-04-05T10:51:39.393Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="AL-Cui的技术水果摊">
+<meta name="twitter:title" content="Istio怎么劫持了流量">
+<meta name="twitter:description" content="Istio怎么劫持了流量当我们使用istio的时候，有时候会思考Istio到底是怎么劫持了k8s集群的流量呢？首先我们要明白k8s本身的流量是怎么流转的。举个例子，服务A通过服务B部署时注册的Service名称来填写调用地址，这个地址被翻译成一个域名，通过k8s中的私有DNS系统翻译成一个虚拟的ClusterIP，再通过部署在每一个节点上的Kube-proxy服务负载给Service对应的Pod。">
   
     <link rel="alternative" href="/atom.xml" title="AL-Cui的技术水果摊" type="application/atom+xml">
   
@@ -156,37 +160,91 @@
             <canvas data-colors="#eaeaea" data-sectionHeight="100" data-contentId="js-content" id="myCanvas1" class="anm-canvas"></canvas>
           </div>
           <div id="js-content" class="content-ll">
-            
+            <article id="post-Istio怎么劫持了流量" class="article article-type-post " itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
   
+    <h1 class="article-title" itemprop="name">
+      Istio怎么劫持了流量
+    </h1>
   
-    
-    
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2020" class="archive-year">2020</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2020/04/05/Istio怎么劫持了流量/" class="archive-article-date">
+
+        
+        <a href="/2020/04/05/Istio怎么劫持了流量/" class="archive-article-date">
   	<time datetime="2020-04-05T10:43:51.816Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-04-05</time>
 </a>
-        </div>
-    	 
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2020/04/05/Istio怎么劫持了流量/">Istio怎么劫持了流量</a>
-    </h1>
-  
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Istio怎么劫持了流量"><a href="#Istio怎么劫持了流量" class="headerlink" title="Istio怎么劫持了流量"></a>Istio怎么劫持了流量</h1><p>当我们使用istio的时候，有时候会思考Istio到底是怎么劫持了k8s集群的流量呢？<br>首先我们要明白k8s本身的流量是怎么流转的。举个例子，服务A通过服务B部署时注册的Service名称来填写调用地址，这个地址被翻译成一个域名，通过k8s中的私有DNS系统翻译成一个虚拟的ClusterIP，再通过部署在每一个节点上的Kube-proxy服务负载给Service对应的Pod。那使用Istio的部署会对k8s<br>原有的服务网格结构造成哪些影响呢？</p>
+<h1 id="Sidecar"><a href="#Sidecar" class="headerlink" title="Sidecar"></a>Sidecar</h1><p>Sidecar是与应用一起部署的，它代理一切出入应用的请求，并将其转发到正确的目的地。这样一来，复杂的分布式调用网络本身就对应用透明了。也许会有人对单独部署一个Sidecar进程的稳定性产生疑问，Sidecar的独特之处就在于每个应用本身都独立部署了一套进程，即使出问题也只影响一个或几个服务。</p>
+<h2 id="Sidecar的注入方式"><a href="#Sidecar的注入方式" class="headerlink" title="Sidecar的注入方式"></a>Sidecar的注入方式</h2><p>Sidecar的部署支持自动注入与手动配置两种方式，手动注入需要对部署的yaml文件进行简单的修改即可。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">istioctl kube-inject -f book-info.yml | kubectl apply -f -</span><br></pre></td></tr></table></figure>
 
-        <div class="article-info info-on-right">
-          
-          
+<p>自动注入目前需要k8s配合使用，只需将应用对应的Namespace设置一个label即可</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl label namespace default istio-injection=enabled</span><br></pre></td></tr></table></figure>
+
+<p>这样一来，服务一旦启动，Sidecar就会使用Kubernetes的Mutating Webhook Admission Controller扩展自动注入。<br>那么，Mutating Webhook Admission Controller是怎么自动注入的呢？为什么配置了自动注入的namespace就会在创建pod的时候创建Sidecar容器呢？</p>
+<h1 id="动态准入控制"><a href="#动态准入控制" class="headerlink" title="动态准入控制"></a>动态准入控制</h1><p>Admission webhook是一种用于接收准入请求并对其进行处理的HTTP回调机制。可以定义两种类型的admission webhook，即 validating admission webhook 和 mutating admission webhook。 Mutating admission webhook 会先被调用。<strong>它们可以更改发送到 API 服务器的对象以执行自定义的设置默认值操作</strong>。在完成了所有对象修改并且 API 服务器也验证了所传入的对象之后，validating admission webhook 会被调用，并通过拒绝请求的方式来强制实施自定义的策略。这样，就回答了为什么配置自动注入后创建的pod就能自动创建Sidecar容器。<br>那么，Istio中的mutating admission webhook是怎么定义的呢？其实，要想使用admission webhook首先要定义 ValidatingWebhookConfiguration 或者 MutatingWebhookConfiguration 动态配置哪些资源要被哪些 admission webhook 处理。Istio中定义的MutatingWebhookConfiguration如下：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Source: istio/charts/sidecarInjectorWebhook/templates/mutatingwebhook.yaml</span></span><br><span class="line"></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">admissionregistration.k8s.io/v1beta1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">MutatingWebhookConfiguration</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr">  name:</span> <span class="string">istio-sidecar-injector</span></span><br><span class="line"><span class="attr">  labels:</span></span><br><span class="line"><span class="attr">    app:</span> <span class="string">sidecarInjectorWebhook</span></span><br><span class="line"><span class="attr">    chart:</span> <span class="string">sidecarInjectorWebhook</span></span><br><span class="line"><span class="attr">    heritage:</span> <span class="string">Tiller</span></span><br><span class="line"><span class="attr">    release:</span> <span class="string">istio</span></span><br><span class="line"><span class="attr">webhooks:</span></span><br><span class="line"><span class="attr">  - name:</span> <span class="string">sidecar-injector.istio.io</span></span><br><span class="line"><span class="attr">    clientConfig:</span></span><br><span class="line"><span class="attr">      service:</span></span><br><span class="line"><span class="attr">        name:</span> <span class="string">istio-sidecar-injector</span></span><br><span class="line"><span class="attr">        namespace:</span> <span class="string">istio-system</span></span><br><span class="line"><span class="attr">        path:</span> <span class="string">"/inject"</span></span><br><span class="line"><span class="attr">      caBundle:</span> <span class="string">""</span></span><br><span class="line"><span class="attr">    rules:</span></span><br><span class="line"><span class="attr">      - operations:</span> <span class="string">[</span> <span class="string">"CREATE"</span> <span class="string">]</span></span><br><span class="line"><span class="attr">        apiGroups:</span> <span class="string">[""]</span></span><br><span class="line"><span class="attr">        apiVersions:</span> <span class="string">["v1"]</span></span><br><span class="line"><span class="attr">        resources:</span> <span class="string">["pods"]</span></span><br><span class="line"><span class="attr">    failurePolicy:</span> <span class="string">Fail</span></span><br><span class="line"><span class="attr">    namespaceSelector:</span></span><br><span class="line"><span class="attr">      matchLabels:</span></span><br><span class="line"><span class="attr">        istio-injection:</span> <span class="string">enabled</span></span><br></pre></td></tr></table></figure>
+
+<p>创建一个 service 作为 webhook 服务器的前端，这里就是istio-sidecar-injector service。这个MutatingWebhookConfiguration很清晰，就是匹配带有istio-injection标签的namespace中的 CREATE POD 请求，匹配到之后按照clientConfig中制定的方向发送请求给istio-sidecar-injector service。<br>istio-sidecar-injector指定的是一个deployment，内容如下：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Source: istio/charts/sidecarInjectorWebhook/templates/deployment.yaml</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">apps/v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr">  name:</span> <span class="string">istio-sidecar-injector</span></span><br><span class="line"><span class="attr">  namespace:</span> <span class="string">istio-system</span></span><br><span class="line"><span class="attr">  labels:</span></span><br><span class="line"><span class="attr">    app:</span> <span class="string">sidecarInjectorWebhook</span></span><br><span class="line"><span class="attr">    chart:</span> <span class="string">sidecarInjectorWebhook</span></span><br><span class="line"><span class="attr">    heritage:</span> <span class="string">Tiller</span></span><br><span class="line"><span class="attr">    release:</span> <span class="string">istio</span></span><br><span class="line"><span class="attr">    istio:</span> <span class="string">sidecar-injector</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line"><span class="attr">  replicas:</span> <span class="number">1</span></span><br><span class="line"><span class="attr">  selector:</span></span><br><span class="line"><span class="attr">    matchLabels:</span></span><br><span class="line"><span class="attr">      istio:</span> <span class="string">sidecar-injector</span></span><br><span class="line"><span class="attr">  strategy:</span></span><br><span class="line"><span class="attr">    rollingUpdate:</span></span><br><span class="line"><span class="attr">      maxSurge:</span> <span class="number">100</span><span class="string">%</span></span><br><span class="line"><span class="attr">      maxUnavailable:</span> <span class="number">25</span><span class="string">%</span></span><br><span class="line"><span class="attr">  template:</span></span><br><span class="line"><span class="attr">    metadata:</span></span><br><span class="line"><span class="attr">      labels:</span></span><br><span class="line"><span class="attr">        app:</span> <span class="string">sidecarInjectorWebhook</span></span><br><span class="line"><span class="attr">        chart:</span> <span class="string">sidecarInjectorWebhook</span></span><br><span class="line"><span class="attr">        heritage:</span> <span class="string">Tiller</span></span><br><span class="line"><span class="attr">        release:</span> <span class="string">istio</span></span><br><span class="line"><span class="attr">        istio:</span> <span class="string">sidecar-injector</span></span><br><span class="line"><span class="attr">      annotations:</span></span><br><span class="line">        <span class="string">sidecar.istio.io/inject:</span> <span class="string">"false"</span></span><br><span class="line"><span class="attr">    spec:</span></span><br><span class="line"><span class="attr">      serviceAccountName:</span> <span class="string">istio-sidecar-injector-service-account</span></span><br><span class="line"><span class="attr">      containers:</span></span><br><span class="line"><span class="attr">        - name:</span> <span class="string">sidecar-injector-webhook</span></span><br><span class="line"><span class="attr">          image:</span> <span class="string">"docker.io/istio/sidecar_injector:1.5.1"</span></span><br><span class="line"><span class="attr">          imagePullPolicy:</span> <span class="string">IfNotPresent</span></span><br><span class="line"><span class="attr">          args:</span></span><br><span class="line"><span class="bullet">            -</span> <span class="bullet">--caCertFile=/etc/istio/certs/root-cert.pem</span></span><br><span class="line"><span class="bullet">            -</span> <span class="bullet">--tlsCertFile=/etc/istio/certs/cert-chain.pem</span></span><br><span class="line"><span class="bullet">            -</span> <span class="bullet">--tlsKeyFile=/etc/istio/certs/key.pem</span></span><br><span class="line"><span class="bullet">            -</span> <span class="bullet">--injectConfig=/etc/istio/inject/config</span></span><br><span class="line"><span class="bullet">            -</span> <span class="bullet">--meshConfig=/etc/istio/config/mesh</span></span><br><span class="line"><span class="bullet">            -</span> <span class="bullet">--healthCheckInterval=2s</span></span><br><span class="line"><span class="bullet">            -</span> <span class="bullet">--healthCheckFile=/tmp/health</span></span><br><span class="line"><span class="bullet">            -</span> <span class="bullet">--reconcileWebhookConfig=true</span></span><br><span class="line"><span class="attr">          volumeMounts:</span></span><br><span class="line"><span class="attr">          - name:</span> <span class="string">config-volume</span></span><br><span class="line"><span class="attr">            mountPath:</span> <span class="string">/etc/istio/config</span></span><br><span class="line"><span class="attr">            readOnly:</span> <span class="literal">true</span></span><br><span class="line"><span class="attr">          - name:</span> <span class="string">certs</span></span><br><span class="line"><span class="attr">            mountPath:</span> <span class="string">/etc/istio/certs</span></span><br><span class="line"><span class="attr">            readOnly:</span> <span class="literal">true</span></span><br><span class="line"><span class="attr">          - name:</span> <span class="string">inject-config</span></span><br><span class="line"><span class="attr">            mountPath:</span> <span class="string">/etc/istio/inject</span></span><br><span class="line"><span class="attr">            readOnly:</span> <span class="literal">true</span></span><br><span class="line"><span class="attr">          livenessProbe:</span></span><br><span class="line"><span class="attr">            exec:</span></span><br><span class="line"><span class="attr">              command:</span></span><br><span class="line"><span class="bullet">                -</span> <span class="string">/usr/local/bin/sidecar-injector</span></span><br><span class="line"><span class="bullet">                -</span> <span class="string">probe</span></span><br><span class="line"><span class="bullet">                -</span> <span class="bullet">--probe-path=/tmp/health</span></span><br><span class="line"><span class="bullet">                -</span> <span class="bullet">--interval=4s</span></span><br><span class="line"><span class="attr">            initialDelaySeconds:</span> <span class="number">4</span></span><br><span class="line"><span class="attr">            periodSeconds:</span> <span class="number">4</span></span><br><span class="line"><span class="attr">          readinessProbe:</span></span><br><span class="line"><span class="attr">            exec:</span></span><br><span class="line"><span class="attr">              command:</span></span><br><span class="line"><span class="bullet">                -</span> <span class="string">/usr/local/bin/sidecar-injector</span></span><br><span class="line"><span class="bullet">                -</span> <span class="string">probe</span></span><br><span class="line"><span class="bullet">                -</span> <span class="bullet">--probe-path=/tmp/health</span></span><br><span class="line"><span class="bullet">                -</span> <span class="bullet">--interval=4s</span></span><br><span class="line"><span class="attr">            initialDelaySeconds:</span> <span class="number">4</span></span><br><span class="line"><span class="attr">            periodSeconds:</span> <span class="number">4</span></span><br><span class="line"><span class="attr">          resources:</span></span><br><span class="line"><span class="attr">            requests:</span></span><br><span class="line"><span class="attr">              cpu:</span> <span class="number">10</span><span class="string">m</span></span><br><span class="line">            </span><br><span class="line"><span class="attr">      volumes:</span></span><br><span class="line"><span class="attr">      - name:</span> <span class="string">config-volume</span></span><br><span class="line"><span class="attr">        configMap:</span></span><br><span class="line"><span class="attr">          name:</span> <span class="string">istio</span></span><br><span class="line"><span class="attr">      - name:</span> <span class="string">certs</span></span><br><span class="line"><span class="attr">        secret:</span></span><br><span class="line"><span class="attr">          secretName:</span> <span class="string">istio.istio-sidecar-injector-service-account</span></span><br><span class="line"><span class="attr">      - name:</span> <span class="string">inject-config</span></span><br><span class="line"><span class="attr">        configMap:</span></span><br><span class="line"><span class="attr">          name:</span> <span class="string">istio-sidecar-injector</span></span><br><span class="line"><span class="attr">          items:</span></span><br><span class="line"><span class="attr">          - key:</span> <span class="string">config</span></span><br><span class="line"><span class="attr">            path:</span> <span class="string">config</span></span><br><span class="line"><span class="attr">          - key:</span> <span class="string">values</span></span><br><span class="line"><span class="attr">            path:</span> <span class="string">values</span></span><br><span class="line"><span class="attr">      affinity:</span>      </span><br><span class="line"><span class="attr">        nodeAffinity:</span></span><br><span class="line"><span class="attr">          requiredDuringSchedulingIgnoredDuringExecution:</span></span><br><span class="line"><span class="attr">            nodeSelectorTerms:</span></span><br><span class="line"><span class="attr">            - matchExpressions:</span></span><br><span class="line"><span class="attr">              - key:</span> <span class="string">beta.kubernetes.io/arch</span></span><br><span class="line"><span class="attr">                operator:</span> <span class="string">In</span></span><br><span class="line"><span class="attr">                values:</span></span><br><span class="line"><span class="bullet">                -</span> <span class="string">"amd64"</span></span><br><span class="line"><span class="bullet">                -</span> <span class="string">"ppc64le"</span></span><br><span class="line"><span class="bullet">                -</span> <span class="string">"s390x"</span></span><br><span class="line"><span class="attr">          preferredDuringSchedulingIgnoredDuringExecution:</span></span><br><span class="line"><span class="attr">          - weight:</span> <span class="number">2</span></span><br><span class="line"><span class="attr">            preference:</span></span><br><span class="line"><span class="attr">              matchExpressions:</span></span><br><span class="line"><span class="attr">              - key:</span> <span class="string">beta.kubernetes.io/arch</span></span><br><span class="line"><span class="attr">                operator:</span> <span class="string">In</span></span><br><span class="line"><span class="attr">                values:</span></span><br><span class="line"><span class="bullet">                -</span> <span class="string">"amd64"</span></span><br><span class="line"><span class="attr">          - weight:</span> <span class="number">2</span></span><br><span class="line"><span class="attr">            preference:</span></span><br><span class="line"><span class="attr">              matchExpressions:</span></span><br><span class="line"><span class="attr">              - key:</span> <span class="string">beta.kubernetes.io/arch</span></span><br><span class="line"><span class="attr">                operator:</span> <span class="string">In</span></span><br><span class="line"><span class="attr">                values:</span></span><br><span class="line"><span class="bullet">                -</span> <span class="string">"ppc64le"</span></span><br><span class="line"><span class="attr">          - weight:</span> <span class="number">2</span></span><br><span class="line"><span class="attr">            preference:</span></span><br><span class="line"><span class="attr">              matchExpressions:</span></span><br><span class="line"><span class="attr">              - key:</span> <span class="string">beta.kubernetes.io/arch</span></span><br><span class="line"><span class="attr">                operator:</span> <span class="string">In</span></span><br><span class="line"><span class="attr">                values:</span></span><br><span class="line"><span class="bullet">                -</span> <span class="string">"s390x"</span></span><br></pre></td></tr></table></figure>
+
+<p>这个Pod主要做的事我们通过现象来分析。</p>
+<h1 id="Pod中的三个容器"><a href="#Pod中的三个容器" class="headerlink" title="Pod中的三个容器"></a>Pod中的三个容器</h1><p>我们通过istio官方的demo我们可以发现，开启了自动注入后创建的review Pod中有三个容器，分别是：</p>
+<ul>
+<li>k8s_reviews_revierws-v3</li>
+<li>k8s_istio_proxy_reviews-v3</li>
+<li>k8s_POD_reviews<br>通过分析，第一个就是应用本身，第三个是kubernetes的pause容器，第二个容器就是istio系统中的Sidecar，并且进入容器我们也能看到里边运行的就是Envoy。这个容器是和Pod一一对应的，<strong>所以Sidecar是部署在Pod这个层级的</strong>，这一点很重要。<h2 id="Sidecar是如何劫持流量的呢"><a href="#Sidecar是如何劫持流量的呢" class="headerlink" title="Sidecar是如何劫持流量的呢"></a>Sidecar是如何劫持流量的呢</h2>我们发现了istio会给我们的每个Pod创建一个Sidecar容器，那么他是如何劫持流量的呢？<br>我们进入到这个容器后，执行ifconfig会惊奇发现，应用容器使用的IP地址与istio-proxy竟然是一样的。这说明应用容器与istio-proxy两个容器共享了网络。也就是说，istio在pod启动的时候使用自己的特殊pause容器istio-proxy替换掉了Kubernetes官方的pause，使得应用与istio-proxy处于同一个网络栈下。那最后的问题就是istio如何将应用的进出流量都重新定向到istio-proxy容器监听的端口。为了搞明白这个问题，我们可以手动注入Sidecar，来对比yaml文件的变化。主要变化是init container中多了一个proxy_init容器，查看它的Dockerfile文件可以发现，这个容器主要就是运行了一个脚本：</li>
+</ul>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">FROM ubuntu:xenial</span><br><span class="line">RUN apt-get update &amp;&amp; apt-get install -y \</span><br><span class="line">    iproute2 \</span><br><span class="line">    iptables \</span><br><span class="line"> &amp;&amp; rm -rf /var/lib/apt/lists/*</span><br><span class="line">ADD istio-iptables.sh /usr/local/bin/</span><br><span class="line">ENTRYPOINT [<span class="string">"/usr/local/bin/istio-iptables.sh"</span>]</span><br></pre></td></tr></table></figure>
+
+<p>该脚本源码就不具体分析了，不过也能猜出大概。istio正是通过iptables以及iproute2这个工具对Linux网络流量配置了过滤规则来实现Sidecar的流量劫持，其执行的脚本正是istio-iptables这个脚本文件。</p>
+
+      
+
+      
+        <div class="page-reward">
+          <a href="javascript:;" class="page-reward-btn tooltip-top">
+            <div class="tooltip tooltip-east">
+            <span class="tooltip-item">
+              赏
+            </span>
+            <span class="tooltip-content">
+              <span class="tooltip-text">
+                <span class="tooltip-inner">
+                  <p class="reward-p"><i class="icon icon-quo-left"></i>谢谢你请我吃水果<i class="icon icon-quo-right"></i></p>
+                  <div class="reward-box">
+                    
+                    <div class="reward-box-item">
+                      <img class="reward-img" src="/img/alipay.jpg">
+                      <span class="reward-type">支付宝</span>
+                    </div>
+                    
+                    
+                    <div class="reward-box-item">
+                      <img class="reward-img" src="/img/wei.png">
+                      <span class="reward-type">微信</span>
+                    </div>
+                    
+                  </div>
+                </span>
+              </span>
+            </span>
+          </div>
+          </a>
+        </div>
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+      
 	<div class="article-category tagcloud">
 		<i class="icon-book icon"></i>
 		<ul class="article-tag-list">
@@ -199,169 +257,104 @@
 	</div>
 
 
+      
+
+      
+        
+<div class="share-btn share-icons tooltip-left">
+  <div class="tooltip tooltip-east">
+    <span class="tooltip-item">
+      <a href="javascript:;" class="share-sns share-outer">
+        <i class="icon icon-share"></i>
+      </a>
+    </span>
+    <span class="tooltip-content">
+      <div class="share-wrap">
+        <div class="share-icons">
+          <a class="weibo share-sns" href="javascript:;" data-type="weibo">
+            <i class="icon icon-weibo"></i>
+          </a>
+          <a class="weixin share-sns wxFab" href="javascript:;" data-type="weixin">
+            <i class="icon icon-weixin"></i>
+          </a>
+          <a class="qq share-sns" href="javascript:;" data-type="qq">
+            <i class="icon icon-qq"></i>
+          </a>
+          <a class="douban share-sns" href="javascript:;" data-type="douban">
+            <i class="icon icon-douban"></i>
+          </a>
+          <a class="qzone share-sns" href="javascript:;" data-type="qzone">
+            <i class="icon icon-qzone"></i>
+          </a>
+          <a class="facebook share-sns" href="javascript:;" data-type="facebook">
+            <i class="icon icon-facebook"></i>
+          </a>
+          <a class="twitter share-sns" href="javascript:;" data-type="twitter">
+            <i class="icon icon-twitter"></i>
+          </a>
+          <a class="google share-sns" href="javascript:;" data-type="google">
+            <i class="icon icon-google"></i>
+          </a>
         </div>
-        <div class="clearfix"></div>
-    </header>
+      </div>
+    </span>
+  </div>
+</div>
+
+<div class="page-modal wx-share js-wx-box">
+    <a class="close js-modal-close" href="javascript:;"><i class="icon icon-close"></i></a>
+    <p>扫一扫，分享到微信</p>
+    <div class="wx-qrcode">
+      <img src="//pan.baidu.com/share/qrcode?url=http://yoursite.com/2020/04/05/Istio怎么劫持了流量/" alt="微信分享二维码">
+    </div>
+</div>
+
+<div class="mask js-mask"></div>
+      
+      <div class="clearfix"></div>
+    </div>
   </div>
 </article>
+
   
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2020/04/05/K8S集群日志收集方案/" class="archive-article-date">
-  	<time datetime="2020-04-05T03:54:46.697Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-04-05</time>
-</a>
+<nav id="article-nav">
+  
+  
+    <a href="/2020/04/05/K8S集群日志收集方案/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">K8S集群日志收集方案</div>
+      <i class="icon-circle-right"></i>
+    </a>
+  
+</nav>
+
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
         </div>
-    	 
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2020/04/05/K8S集群日志收集方案/">K8S集群日志收集方案</a>
-    </h1>
-  
-
-        <div class="article-info info-on-right">
-          
-          
-	<div class="article-category tagcloud">
-		<i class="icon-book icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="/categories/Kubernetes//" class="article-tag-list-link color1">Kubernetes</a>
-        		</li>
-      		
-		</ul>
-	</div>
+        
+        
+    </div>
+</aside>
 
 
-        </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
+
   
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2020/04/05/自己动手搭建Harbor镜像仓库/" class="archive-article-date">
-  	<time datetime="2020-04-05T03:06:43.064Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-04-05</time>
-</a>
-        </div>
-    	 
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2020/04/05/自己动手搭建Harbor镜像仓库/">自己动手搭建Harbor镜像仓库</a>
-    </h1>
   
 
-        <div class="article-info info-on-right">
-          
-          
-	<div class="article-category tagcloud">
-		<i class="icon-book icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="/categories/Kubernetes//" class="article-tag-list-link color1">Kubernetes</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-
-        </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2020/04/05/自己动手搭建kubernetes dashboard界面/" class="archive-article-date">
-  	<time datetime="2020-04-05T03:06:43.064Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-04-05</time>
-</a>
-        </div>
-    	 
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2020/04/05/自己动手搭建kubernetes dashboard界面/">kubernetes dashboard</a>
-    </h1>
   
 
-        <div class="article-info info-on-right">
-          
-          
-	<div class="article-category tagcloud">
-		<i class="icon-book icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="/categories/Kubernetes//" class="article-tag-list-link color1">Kubernetes</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-
-        </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
-  
-    
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2020/04/05/k8s集群中部署Calico踩坑笔记/" class="archive-article-date">
-  	<time datetime="2020-04-05T03:06:43.063Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-04-05</time>
-</a>
-        </div>
-    	 
-  
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2020/04/05/k8s集群中部署Calico踩坑笔记/">k8s集群部署Calico踩坑</a>
-    </h1>
   
 
-        <div class="article-info info-on-right">
-          
-          
-	<div class="article-category tagcloud">
-		<i class="icon-book icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="/categories/Kubernetes//" class="article-tag-list-link color1">Kubernetes</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-
-        </div>
-        <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
   
-  
-    </div></section>
-  
-
-    
 
 
           </div>
@@ -387,10 +380,10 @@
 	var yiliaConfig = {
 		mathjax: false,
 		isHome: false,
-		isPost: false,
+		isPost: true,
 		isArchive: false,
 		isTag: false,
-		isCategory: true,
+		isCategory: false,
 		open_in_new: false,
 		toc_hide_index: true,
 		root: "/",
