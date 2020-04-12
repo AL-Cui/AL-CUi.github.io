@@ -158,6 +158,117 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-Kubernetes的Limits和Requests" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/04/12/Kubernetes的Limits和Requests/">kubernetes中的Requests和Limits</a>
+    </h1>
+  
+
+        
+        <a href="/2020/04/12/Kubernetes的Limits和Requests/" class="archive-article-date">
+  	<time datetime="2020-04-12T12:11:47.684Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-04-12</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>在k8s的集群环境中，资源的合理分配和使用至关重要。毕竟容器化要解决的问题之一就是资源的充分利用。在集群中分配资源的时候就不得不提到Limits和Requests。</p>
+<h1 id="Namespace配额"><a href="#Namespace配额" class="headerlink" title="Namespace配额"></a>Namespace配额</h1><p>众所周知，Kubernetes 是允许管理员在命名空间中指定资源 Requests 和 Limits 的，这一特性对于资源管理限制非常有用。但它目前还存在一定局限：<strong>如果管理员在命名空间中设置了 CPU  Requests 配额，那么所有 Pod 也要在其定义中设置 CPU  Requests，否则就无法被调配资源。</strong></p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">apiVersion:</span> <span class="string">v1</span></span><br><span class="line"><span class="attr">kind:</span> <span class="string">ResourceQuota</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr">  name:</span> <span class="string">mem-cpu-example</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line"><span class="attr">  hard:</span></span><br><span class="line">    <span class="string">requests.cpu:</span> <span class="number">4</span></span><br><span class="line">    <span class="string">requests.memory:</span> <span class="number">4</span><span class="string">Gi</span></span><br><span class="line">    <span class="string">limits.cpu:</span> <span class="number">6</span></span><br><span class="line">    <span class="string">limits.memory:</span> <span class="number">6</span><span class="string">Gi</span></span><br></pre></td></tr></table></figure>
+
+<p>这是一个简单的ResourceQuota类型，也就是针对Namespace的配额。它会针对Namespace做如下限额：</p>
+<ul>
+<li>所有 CPU Requests 的总和不能超过 4 个内核</li>
+<li>所有 RAM Requests 的总和不能超过 4GiB</li>
+<li>所有 CPU Limits 的总和不能超过 6个内核</li>
+<li>所有 RAM Limits 的总和不能超过 6GiB</li>
+</ul>
+<h1 id="针对Pod的Request和Limit"><a href="#针对Pod的Request和Limit" class="headerlink" title="针对Pod的Request和Limit"></a>针对Pod的Request和Limit</h1><p>刚才讲到我们可以针对Pod进行资源限额，同样也可以设置Pod申请资源的Request和Limit。k8s中会将一个CPU分成1000个shares，这和Cgroup中分成1024略有差异。正常情况下requests的数值应该小于limits，那么该Pod获得的资源可以分为两部分：</p>
+<ul>
+<li>完全可靠的资源，资源量大小等于requests值</li>
+<li>不可靠的资源，资源量最大等于limits和requests的差额，这份不可靠的资源能够申请到多少，取决于当时主机上容器可用资源的余量。<br>如下例：</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">kind:</span> <span class="string">Deployment</span></span><br><span class="line"><span class="attr">apiVersion:</span> <span class="string">extensions/v1beta1</span></span><br><span class="line"><span class="attr">metadata:</span></span><br><span class="line"><span class="attr"> name:</span> <span class="string">redis</span></span><br><span class="line"><span class="attr"> labels:</span></span><br><span class="line"><span class="attr">   name:</span> <span class="string">redis</span></span><br><span class="line"><span class="attr">   app:</span> <span class="string">redis-app</span></span><br><span class="line"><span class="attr">spec:</span></span><br><span class="line"><span class="attr"> replicas:</span> <span class="number">2</span></span><br><span class="line"><span class="attr"> selector:</span></span><br><span class="line"><span class="attr">   matchLabels:</span></span><br><span class="line"><span class="attr">    name:</span> <span class="string">redis</span></span><br><span class="line"><span class="attr">    role:</span> <span class="string">redisdb</span></span><br><span class="line"><span class="attr">    app:</span> <span class="string">redis-app</span></span><br><span class="line"><span class="attr"> template:</span></span><br><span class="line"><span class="attr">   spec:</span></span><br><span class="line"><span class="attr">     containers:</span></span><br><span class="line"><span class="attr">       - name:</span> <span class="string">redis</span></span><br><span class="line"><span class="attr">         image:</span> <span class="attr">redis:5.0.3-alpine</span></span><br><span class="line"><span class="attr">         resources:</span></span><br><span class="line"><span class="attr">           limits:</span></span><br><span class="line"><span class="attr">             memory:</span> <span class="number">500</span><span class="string">Mi</span></span><br><span class="line"><span class="attr">             cpu:</span> <span class="number">1</span></span><br><span class="line"><span class="attr">           requests:</span></span><br><span class="line"><span class="attr">             memory:</span> <span class="number">250</span><span class="string">Mi</span></span><br><span class="line"><span class="attr">             cpu:</span> <span class="number">500</span><span class="string">m</span></span><br><span class="line"><span class="attr">       - name:</span> <span class="string">busybox</span></span><br><span class="line"><span class="attr">         image:</span> <span class="attr">busybox:1.28</span></span><br><span class="line"><span class="attr">         resources:</span></span><br><span class="line"><span class="attr">           limits:</span></span><br><span class="line"><span class="attr">             memory:</span> <span class="number">100</span><span class="string">Mi</span></span><br><span class="line"><span class="attr">             cpu:</span> <span class="number">100</span><span class="string">m</span></span><br><span class="line"><span class="attr">           requests:</span></span><br><span class="line"><span class="attr">             memory:</span> <span class="number">50</span><span class="string">Mi</span></span><br><span class="line"><span class="attr">             cpu:</span> <span class="number">50</span><span class="string">m</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>Pod 中共两个容器，的有效  Request  是 300MiB 的内存和 550 毫核（millicore）的 CPU。我们需要一个具有足够可用可分配空间的节点来调度 Pod</li>
+<li>如果 Redis 容器尝试分配超过 500MB 的 RAM，就会被 OOM-killer</li>
+<li>如果 Redis 容器尝试每 100ms 使用 100ms 以上的 CPU，那么 Redis 就会受到 CPU 限制（如果我们一共有 4 个内核，可用时间为 400ms/100ms），从而导致性能下降</li>
+<li>如果 busybox 容器尝试分配 100MB 以上的 RAM，也会引起 OOM</li>
+<li>如果 busybox 容器尝试每 100ms 使用 10ms 以上的 CPU，也会使 CPU 受到限制，从而导致性能下降<br>需要注意的是，<strong>Kubernetes 限制的是每个容器，而不是每个 Pod</strong>。其他 CPU 指标，如共享 CPU 资源使用情况，只对分配有参考价值，所以如果遇到了性能上的问题，建议不要在这些指标上浪费时间。<h1 id="Requests等于Limits-的时候"><a href="#Requests等于Limits-的时候" class="headerlink" title="Requests等于Limits 的时候"></a>Requests等于Limits 的时候</h1>一般情况下我们设置的Requests值一般都要小于Limits，但是也存在特殊情况。涉及到一个概念就是<strong>服务质量等级</strong></li>
+<li><strong>Guaranteed</strong>（完全可靠的）；Limits==requests,或者只设置了Limits，此时默认requests等于limits</li>
+<li><strong>Burstable</strong>（弹性波动、较可靠的）；分为两种情况：1、Pod中一部分容器在一种或多种资源类型中配置了requests和limits，2、Pod中一部分容器未定义资源配置（requests和limits都未配置）</li>
+<li><strong>BestEffort</strong>（尽力而为、不太可靠的）；Pod所有中所有容器都未定义requests和limits</li>
+</ul>
+<p><strong>注意：在容器未定义limits时，limits值默认是节点资源容量的上限。</strong></p>
+<p>另外，<strong>当我们分配CPU的requests和limits相等的时候，就是指该容器独占CPU，需要在kubelet服务的配置中增加<code>--cpu-manager-policy=static</code></strong></p>
+<h1 id="可压缩资源和不可压缩资源"><a href="#可压缩资源和不可压缩资源" class="headerlink" title="可压缩资源和不可压缩资源"></a>可压缩资源和不可压缩资源</h1><p>我们上文提到，在容器可使用的资源有CPU和内存。所以我们拓展一下k8s集群中的可压缩资源和不可压缩资源概念。<br>在k8s中，<strong>CPU就是可压缩资源</strong>。空闲的CPU资源会按照容器的requests值得比例进行分配，举例说明：容器A requests1 limits 10；容器B requests2 limits 8，加入一开始该节点上可用CPU位3，那么两个容器恰好得到各自requests的量。此时节点又释放了1.5CPU，A和B都需要更多CPU资源，那么这1.5CPU就会按照A和B的requests量按比例分配，最后A得到1.5CPU，B得到3CPU。</p>
+<p><strong>目前，k8s支持的不可压缩资源是内存</strong>。Pod中可以得到requests的内存量，如果Pod使用小于该值，那么Pod正常运行；如果Pod使用超过了该值极=就有可能被k8s杀掉。比如，Pod A使用了大于requests但是小于limits的内存，此时Pod B使用了小于requests的内存，但是Pod B中的程序突然压力增大，向k8s请求更多的但是不超过自己requests的内存资源，而节点上已没有空闲内存资源，这时候k8s就可能会直接kill Pod A。</p>
+<h1 id="选择可靠的Requests和Limits"><a href="#选择可靠的Requests和Limits" class="headerlink" title="选择可靠的Requests和Limits"></a>选择可靠的Requests和Limits</h1><p>具备一定 Kubernetes 经验的人都知道正确设置 Request 和 Limit 对于应用程序和集群的性能的重要性。</p>
+<p>理想情况下，Pod 请求多少资源，它就用多少资源，但在现实场景下，资源使用是不断变化的，而且它的变化没有规律，不可预测。</p>
+<p>如果 Pod 的资源使用量远低于请求量，那会导致资源（金钱）浪费；如果资源使用量高于请求量，那就会使节点出现性能问题。因此在实际操作中，我们可以把  Request 值上下浮动 25％ 作为一个良性参考标准。</p>
+<p>而关于 Limit，设置合理的 Limit 数值其实需要尝试，因为它主要取决于应用程序的性质、需求模型、对错误的容忍度以及许多其他因素，没有固定答案。<br><img src="https://img-blog.csdnimg.cn/20200412200909653.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L0N1aV9DdWlfNjY2,size_16,color_FFFFFF,t_70" alt="在这里插入图片描述"><br><strong>另一件需要考虑的事是在节点上允许的 Limits 过量使用。</strong><br><img src="https://img-blog.csdnimg.cn/20200412200932891.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L0N1aV9DdWlfNjY2,size_16,color_FFFFFF,t_70" alt="
+"></p>
+<p><strong>这些 Limits 由用户执行，因为 Kubernetes 没有关于超额使用的自动化机制。</strong></p>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+      
+	<div class="article-category tagcloud">
+		<i class="icon-book icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="/categories/Kubernetes//" class="article-tag-list-link color1">Kubernetes</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2020/04/12/Kubernetes的Limits和Requests/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-Istio怎么劫持了流量" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -464,6 +575,83 @@
 
 
   
+    <article id="post-自己动手搭建kubernetes dashboard界面" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/04/05/自己动手搭建kubernetes dashboard界面/">kubernetes dashboard</a>
+    </h1>
+  
+
+        
+        <a href="/2020/04/05/自己动手搭建kubernetes dashboard界面/" class="archive-article-date">
+  	<time datetime="2020-04-05T03:06:43.064Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-04-05</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="自己动手搭建kubernetes-dashboard界面"><a href="#自己动手搭建kubernetes-dashboard界面" class="headerlink" title="自己动手搭建kubernetes dashboard界面"></a>自己动手搭建kubernetes dashboard界面</h1><p>kubernetes官方提供了一套实用的dashboard界面。但是，入学者按照github上搭建安装时往往会遇到各种问题。顺手写个博客记录一下，也希望能帮到一些初学者。</p>
+<h2 id="搭建前准备"><a href="#搭建前准备" class="headerlink" title="搭建前准备"></a>搭建前准备</h2><p>kubernetes官方提供了一套实用的dashboard界面。但是，入学者按照github上搭建安装时往往会遇到各种问题。顺手写个博客记录一下，也希望能帮到一些初学者。目前，我搭建的kubernetes dashboard版本是1.10.1.搭建之前我们首先要有一套k8s集群环境。搭建k8s环境有空再写博客，另外还需要准备以下东西。</p>
+        
+          <a class="article-more-a" href="/2020/04/05/自己动手搭建kubernetes dashboard界面/#more">more >></a>
+        
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+      
+	<div class="article-category tagcloud">
+		<i class="icon-book icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="/categories/Kubernetes//" class="article-tag-list-link color1">Kubernetes</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2020/04/05/自己动手搭建kubernetes dashboard界面/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-自己动手搭建Harbor镜像仓库" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -545,83 +733,6 @@
       
         <p class="article-more-link">
           <a class="article-more-a" href="/2020/04/05/自己动手搭建Harbor镜像仓库/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-自己动手搭建kubernetes dashboard界面" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2020/04/05/自己动手搭建kubernetes dashboard界面/">kubernetes dashboard</a>
-    </h1>
-  
-
-        
-        <a href="/2020/04/05/自己动手搭建kubernetes dashboard界面/" class="archive-article-date">
-  	<time datetime="2020-04-05T03:06:43.064Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-04-05</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="自己动手搭建kubernetes-dashboard界面"><a href="#自己动手搭建kubernetes-dashboard界面" class="headerlink" title="自己动手搭建kubernetes dashboard界面"></a>自己动手搭建kubernetes dashboard界面</h1><p>kubernetes官方提供了一套实用的dashboard界面。但是，入学者按照github上搭建安装时往往会遇到各种问题。顺手写个博客记录一下，也希望能帮到一些初学者。</p>
-<h2 id="搭建前准备"><a href="#搭建前准备" class="headerlink" title="搭建前准备"></a>搭建前准备</h2><p>kubernetes官方提供了一套实用的dashboard界面。但是，入学者按照github上搭建安装时往往会遇到各种问题。顺手写个博客记录一下，也希望能帮到一些初学者。目前，我搭建的kubernetes dashboard版本是1.10.1.搭建之前我们首先要有一套k8s集群环境。搭建k8s环境有空再写博客，另外还需要准备以下东西。</p>
-        
-          <a class="article-more-a" href="/2020/04/05/自己动手搭建kubernetes dashboard界面/#more">more >></a>
-        
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-	<div class="article-category tagcloud">
-		<i class="icon-book icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="/categories/Kubernetes//" class="article-tag-list-link color1">Kubernetes</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2020/04/05/自己动手搭建kubernetes dashboard界面/">展开全文 >></a>
         </p>
       
 
@@ -811,6 +922,82 @@
 
 
   
+    <article id="post-Golang 1.10 获取Windows上的硬件数据信息" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2020/04/05/Golang 1.10 获取Windows上的硬件数据信息/">Golang获取windows硬件数据</a>
+    </h1>
+  
+
+        
+        <a href="/2020/04/05/Golang 1.10 获取Windows上的硬件数据信息/" class="archive-article-date">
+  	<time datetime="2020-04-05T03:06:43.062Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-04-05</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="Golang1-10获取windows硬件数据"><a href="#Golang1-10获取windows硬件数据" class="headerlink" title="Golang1.10获取windows硬件数据"></a>Golang1.10获取windows硬件数据</h1><p>   <strong>嗯，工作原因需要使用go语言抓取windows下的硬件信息，包括CPU，GPU，内存，网卡信息，物理硬盘，系统信息等。做Golang语言开发的应该都知道，一手资料都在国外，国内的博客都是千篇一律互相Copy。所以，自己写个博客给大家分享一下，也记录一下。这里，我的golang版本是最新的1.10.1。不多说了，直接上干货</strong>。</p>
+        
+          <a class="article-more-a" href="/2020/04/05/Golang 1.10 获取Windows上的硬件数据信息/#more">more >></a>
+        
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+      
+	<div class="article-category tagcloud">
+		<i class="icon-book icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="/categories/Golang//" class="article-tag-list-link color2">Golang</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2020/04/05/Golang 1.10 获取Windows上的硬件数据信息/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-Ansible-playbook 关于ssh的配置和使用" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -859,82 +1046,6 @@
       
         <p class="article-more-link">
           <a class="article-more-a" href="/2020/04/05/Ansible-playbook 关于ssh的配置和使用/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-Golang 1.10 获取Windows上的硬件数据信息" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2020/04/05/Golang 1.10 获取Windows上的硬件数据信息/">Golang获取windows硬件数据</a>
-    </h1>
-  
-
-        
-        <a href="/2020/04/05/Golang 1.10 获取Windows上的硬件数据信息/" class="archive-article-date">
-  	<time datetime="2020-04-05T03:06:43.062Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2020-04-05</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <h1 id="Golang1-10获取windows硬件数据"><a href="#Golang1-10获取windows硬件数据" class="headerlink" title="Golang1.10获取windows硬件数据"></a>Golang1.10获取windows硬件数据</h1><p>   <strong>嗯，工作原因需要使用go语言抓取windows下的硬件信息，包括CPU，GPU，内存，网卡信息，物理硬盘，系统信息等。做Golang语言开发的应该都知道，一手资料都在国外，国内的博客都是千篇一律互相Copy。所以，自己写个博客给大家分享一下，也记录一下。这里，我的golang版本是最新的1.10.1。不多说了，直接上干货</strong>。</p>
-        
-          <a class="article-more-a" href="/2020/04/05/Golang 1.10 获取Windows上的硬件数据信息/#more">more >></a>
-        
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-	<div class="article-category tagcloud">
-		<i class="icon-book icon"></i>
-		<ul class="article-tag-list">
-			 
-        		<li class="article-tag-list-item">
-        			<a href="/categories/Golang//" class="article-tag-list-link color2">Golang</a>
-        		</li>
-      		
-		</ul>
-	</div>
-
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2020/04/05/Golang 1.10 获取Windows上的硬件数据信息/">展开全文 >></a>
         </p>
       
 
